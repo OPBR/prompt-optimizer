@@ -5,8 +5,8 @@
       <InputPanelUI
         v-model="prompt"
         v-model:selectedModel="selectedOptimizeModel"
-        :label="t('promptOptimizer.originalPrompt')"
-        :placeholder="t('promptOptimizer.inputPlaceholder')"
+        :label="promptInputLabel"
+        :placeholder="promptInputPlaceholder"
         :model-label="t('promptOptimizer.optimizeModel')"
         :template-label="t('promptOptimizer.templateLabel')"
         :button-text="t('promptOptimizer.optimize')"
@@ -16,6 +16,12 @@
         @submit="handleOptimizePrompt"
         @configModel="$emit('showConfig')"
       >
+        <template #prompt-type-selector>
+          <PromptTypeSelectorUI
+            v-model="selectedPromptType"
+            @change="handlePromptTypeChange"
+          />
+        </template>
         <template #model-select>
           <ModelSelectUI
             ref="optimizeModelSelect"
@@ -28,8 +34,9 @@
         <template #template-select>
           <TemplateSelectUI
             v-model="selectedOptimizeTemplate"
-            type="optimize"
-            @manage="$emit('openTemplateManager', 'optimize')"
+            :type="selectedPromptType === 'system' ? 'optimize' : 'userOptimize'"
+            :prompt-type="selectedPromptType"
+            @manage="$emit('openTemplateManager', selectedPromptType === 'system' ? 'optimize' : 'userOptimize')"
             @select="handleTemplateSelect"
           />
         </template>
@@ -55,7 +62,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { usePromptOptimizer } from '../composables/usePromptOptimizer'
 import ContentCardUI from './ContentCard.vue'
@@ -63,6 +70,7 @@ import InputPanelUI from './InputPanel.vue'
 import ModelSelectUI from './ModelSelect.vue'
 import TemplateSelectUI from './TemplateSelect.vue'
 import PromptPanelUI from './PromptPanel.vue'
+import PromptTypeSelectorUI from './PromptTypeSelector.vue'
 
 const { t } = useI18n()
 
@@ -89,6 +97,27 @@ const emit = defineEmits(['showConfig', 'openTemplateManager'])
 
 const optimizeModelSelect = ref(null)
 
+// 新增状态
+const selectedPromptType = ref('system')
+
+// 计算属性：动态标签
+const promptInputLabel = computed(() => {
+  return selectedPromptType.value === 'system'
+    ? t('promptOptimizer.systemPromptInput')
+    : t('promptOptimizer.userPromptInput')
+})
+
+const promptInputPlaceholder = computed(() => {
+  return selectedPromptType.value === 'system'
+    ? t('promptOptimizer.systemPromptPlaceholder')
+    : t('promptOptimizer.userPromptPlaceholder')
+})
+
+// 事件处理
+const handlePromptTypeChange = (type) => {
+  selectedPromptType.value = type
+}
+
 const {
   prompt,
   optimizedPrompt,
@@ -113,7 +142,8 @@ const {
   props.modelManager,
   props.templateManager,
   props.historyManager,
-  props.promptService
+  props.promptService,
+  selectedPromptType
 )
 
 // 暴露需要的方法和属性给父组件
@@ -127,6 +157,19 @@ defineExpose({
   initTemplateSelection,
   initModelSelection,
   loadModels,
-  saveTemplateSelection
+  saveTemplateSelection,
+  selectedPromptType,
+  selectedOptimizeTemplate,
+  selectedIterateTemplate,
+  handleTemplateSelect,
+  handleSelectHistory: (record) => {
+    // 处理历史记录选择
+    prompt.value = record.originalPrompt
+    optimizedPrompt.value = record.optimizedPrompt
+  }
 })
-</script> 
+</script>
+
+<style scoped>
+/* OptimizePanel 样式 */
+</style>

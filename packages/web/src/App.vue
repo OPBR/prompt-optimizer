@@ -49,8 +49,8 @@
         <InputPanelUI
           v-model="prompt"
           v-model:selectedModel="selectedOptimizeModel"
-          :label="$t('promptOptimizer.originalPrompt')"
-          :placeholder="$t('promptOptimizer.inputPlaceholder')"
+          :label="promptInputLabel"
+          :placeholder="promptInputPlaceholder"
           :model-label="$t('promptOptimizer.optimizeModel')"
           :template-label="$t('promptOptimizer.templateLabel')"
           :button-text="$t('promptOptimizer.optimize')"
@@ -60,6 +60,12 @@
           @submit="handleOptimizePrompt"
           @configModel="showConfig = true"
         >
+          <template #prompt-type-selector>
+            <PromptTypeSelectorUI
+              v-model="selectedOptimizationMode"
+              @change="handleOptimizationModeChange"
+            />
+          </template>
           <template #model-select>
             <ModelSelectUI
               ref="optimizeModelSelect"
@@ -72,8 +78,9 @@
           <template #template-select>
             <TemplateSelectUI
               v-model="selectedOptimizeTemplate"
-              type="optimize"
-              @manage="openTemplateManager('optimize')"
+              :type="selectedOptimizationMode === 'system' ? 'optimize' : 'userOptimize'"
+              :optimization-mode="selectedOptimizationMode"
+              @manage="openTemplateManager(selectedOptimizationMode === 'system' ? 'optimize' : 'userOptimize')"
               @select="handleTemplateSelect"
             />
           </template>
@@ -82,7 +89,7 @@
 
       <!-- 优化结果区域 -->
       <div class="flex-1 min-h-0 overflow-y-auto">
-        <PromptPanelUI 
+        <PromptPanelUI
           v-model:optimized-prompt="optimizedPrompt"
           :original-prompt="prompt"
           :is-iterating="isIterating"
@@ -102,6 +109,7 @@
       :prompt-service="promptServiceRef"
       :original-prompt="prompt"
       :optimized-prompt="optimizedPrompt"
+      :optimization-mode="selectedOptimizationMode"
       v-model="selectedTestModel"
       @showConfig="showConfig = true"
     />
@@ -123,6 +131,7 @@
         <TemplateManagerUI
           v-if="showTemplates"
           :template-type="currentType"
+          :optimization-mode="selectedOptimizationMode"
           :selected-optimize-template="selectedOptimizeTemplate"
           :selected-iterate-template="selectedIterateTemplate"
           @close="handleTemplateManagerClose"
@@ -150,26 +159,26 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { onMounted, ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import {
   // UI组件
   ToastUI,
   ModelManagerUI,
   ThemeToggleUI,
-  OutputPanelUI,
-  PromptPanelUI,
   TemplateManagerUI,
-  TemplateSelectUI,
-  ModelSelectUI,
   HistoryDrawerUI,
-  InputPanelUI,
   MainLayoutUI,
-  ContentCardUI,
   ActionButtonUI,
   TestPanelUI,
   LanguageSwitchUI,
   DataManagerUI,
+  InputPanelUI,
+  PromptPanelUI,
+  PromptTypeSelectorUI,
+  ModelSelectUI,
+  TemplateSelectUI,
+  ContentCardUI,
   // composables
   usePromptOptimizer,
   usePromptTester,
@@ -207,6 +216,27 @@ const toast = useToast()
 
 // 初始化国际化
 const { t } = useI18n()
+
+// 新增状态
+const selectedOptimizationMode = ref('system')
+
+// 计算属性：动态标签
+const promptInputLabel = computed(() => {
+  return selectedOptimizationMode.value === 'system'
+    ? t('promptOptimizer.systemPromptInput')
+    : t('promptOptimizer.userPromptInput')
+})
+
+const promptInputPlaceholder = computed(() => {
+  return selectedOptimizationMode.value === 'system'
+    ? t('promptOptimizer.systemPromptPlaceholder')
+    : t('promptOptimizer.userPromptPlaceholder')
+})
+
+// 事件处理
+const handleOptimizationModeChange = (mode) => {
+  selectedOptimizationMode.value = mode
+}
 
 // 初始化服务
 const {
@@ -253,6 +283,7 @@ const {
   templateManager,
   historyManager,
   promptServiceRef,
+  selectedOptimizationMode,
   selectedOptimizeModel,
   selectedTestModel
 )
@@ -305,7 +336,6 @@ const {
 })
 
 // 数据管理器
-import { ref } from 'vue'
 const showDataManager = ref(false)
 
 const handleDataManagerClose = () => {

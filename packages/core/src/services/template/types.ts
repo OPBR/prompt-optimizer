@@ -8,7 +8,7 @@ export interface TemplateMetadata {
   lastModified: number;     // 最后修改时间
   author?: string;          // 作者（可选）
   description?: string;     // 描述（可选）
-  templateType: 'optimize' | 'iterate'; // 新增类型标识
+  templateType: 'optimize' | 'userOptimize' | 'iterate'; // 模板类型标识
 }
 
 /**
@@ -69,13 +69,13 @@ export interface ITemplateManager {
   clearCache(templateId?: string): void; // Synchronous
   
   /** 按类型列出模板 */
-  listTemplatesByType(type: 'optimize' | 'iterate'): Template[];
-  
-  /** 
+  listTemplatesByType(type: 'optimize' | 'userOptimize' | 'iterate'): Template[];
+
+  /**
    * 根据类型获取模板列表（已废弃）
    * @deprecated 使用 listTemplatesByType 替代
    */
-  getTemplatesByType(type: 'optimize' | 'iterate'): Template[];
+  getTemplatesByType(type: 'optimize' | 'userOptimize' | 'iterate'): Template[];
 }
 
 /**
@@ -101,7 +101,7 @@ export const templateSchema = z.object({
     lastModified: z.number(),
     author: z.string().optional(),
     description: z.string().optional(),
-    templateType: z.enum(['optimize', 'iterate'])
+    templateType: z.enum(['optimize', 'userOptimize', 'iterate'])
   }),
   isBuiltin: z.boolean().optional()
 });
