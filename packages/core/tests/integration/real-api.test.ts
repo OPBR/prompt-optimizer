@@ -52,7 +52,8 @@ describe('Real API Integration Tests', () => {
       metadata: {
         version: '1.0',
         lastModified: Date.now(),
-        templateType: 'optimize' as const
+        templateType: 'optimize' as const,
+        language: 'zh' as const
       }
     }
     await templateManager.saveTemplate(template)
@@ -76,7 +77,7 @@ describe('Real API Integration Tests', () => {
 
       // 执行优化
       const request = {
-        promptType: 'system' as const,
+        optimizationMode: 'system' as const,
         targetPrompt: '请优化这个提示词：写一个关于人工智能的故事',
         modelKey: 'test-openai'
       };
@@ -114,10 +115,12 @@ describe('Real API Integration Tests', () => {
       await modelManager.addModel('test-custom', customModel)
 
       // 执行优化
-      const result = await promptService.optimizePrompt(
-        '请优化这个提示词：写一个关于机器人的故事',
-        'test-custom'
-      )
+      const request = {
+        optimizationMode: 'system' as const,
+        targetPrompt: '请优化这个提示词：写一个关于机器人的故事',
+        modelKey: 'test-custom'
+      };
+      const result = await promptService.optimizePrompt(request)
 
       expect(result).toBeDefined()
       expect(typeof result).toBe('string')
@@ -137,6 +140,11 @@ describe('Real API Integration Tests', () => {
   describe('Gemini API 测试', () => {
     const runGeminiTests = hasGeminiKey
 
+    // Gemini API 可能会有频率限制，因此在每个测试之间添加延迟
+    beforeEach(async () => {
+      await new Promise(resolve => setTimeout(resolve, 5000)); // 等待 5 秒
+    });
+
     it.runIf(runGeminiTests)('应该能使用Gemini API优化提示词', async () => {
       // 添加Gemini模型
       const geminiModel = {
@@ -152,7 +160,7 @@ describe('Real API Integration Tests', () => {
 
       // 执行优化
       const request = {
-        promptType: 'system' as const,
+        optimizationMode: 'system' as const,
         targetPrompt: '请优化这个提示词：写一个关于太空探索的故事',
         modelKey: 'test-gemini'
       };
@@ -191,7 +199,7 @@ describe('Real API Integration Tests', () => {
 
       // 执行优化
       const request = {
-        promptType: 'system' as const,
+        optimizationMode: 'system' as const,
         targetPrompt: '请优化这个提示词：写一个关于人工智能的故事',
         modelKey: 'test-deepseek'
       };
@@ -235,7 +243,7 @@ describe('Real API Integration Tests', () => {
 
       // 优化原始提示词
       const request = {
-        promptType: 'system' as const,
+        optimizationMode: 'system' as const,
         targetPrompt: '写一个故事',
         modelKey: modelKey
       };
@@ -273,7 +281,7 @@ describe('Real API Integration Tests', () => {
 
       // 尝试优化应该失败
       const request = {
-        promptType: 'system' as const,
+        optimizationMode: 'system' as const,
         targetPrompt: '测试提示词',
         modelKey: 'invalid-model'
       };

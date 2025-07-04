@@ -62,7 +62,7 @@ describe('PromptService Integration Tests', () => {
   describe('optimizePrompt with different template formats', () => {
     it.runIf(hasGeminiKey)('should work with string-based templates', async () => {
       const request = {
-        promptType: 'system' as const,
+        optimizationMode: 'system' as const,
         targetPrompt: 'Write a simple greeting',
         modelKey: 'test-gemini'
       };
@@ -96,7 +96,8 @@ describe('PromptService Integration Tests', () => {
         metadata: {
           version: '1.0',
           lastModified: Date.now(),
-          templateType: 'optimize'
+          templateType: 'optimize',
+          language: 'zh' as const
         }
       };
 
@@ -106,7 +107,7 @@ describe('PromptService Integration Tests', () => {
       const getTemplateSpy = vi.spyOn(templateManager, 'getTemplate').mockReturnValue(messageTemplate);
 
       const request = {
-        promptType: 'system' as const,
+        optimizationMode: 'system' as const,
         targetPrompt: 'Write a simple greeting',
         modelKey: 'test-gemini'
       };
@@ -169,7 +170,8 @@ describe('PromptService Integration Tests', () => {
         metadata: {
           version: '1.0',
           lastModified: Date.now(),
-          templateType: 'iterate'
+          templateType: 'iterate',
+          language: 'zh' as const
         }
       };
 
@@ -207,7 +209,7 @@ describe('PromptService Integration Tests', () => {
       let completed = false;
 
       const request = {
-        promptType: 'system' as const,
+        optimizationMode: 'system' as const,
         targetPrompt: 'Write a simple greeting',
         modelKey: 'test-gemini',
         templateId: 'general-optimize'
@@ -284,7 +286,7 @@ describe('PromptService Integration Tests', () => {
       });
 
       const request = {
-        promptType: 'system' as const,
+        optimizationMode: 'system' as const,
         targetPrompt: 'Test prompt',
         modelKey: 'test-gemini'
       };
@@ -304,14 +306,15 @@ describe('PromptService Integration Tests', () => {
         metadata: {
           version: '1.0',
           lastModified: Date.now(),
-          templateType: 'optimize'
+          templateType: 'optimize',
+          language: 'zh' as const
         }
       };
 
       const getTemplateSpy = vi.spyOn(templateManager, 'getTemplate').mockReturnValue(invalidTemplate);
 
       const request = {
-        promptType: 'system' as const,
+        optimizationMode: 'system' as const,
         targetPrompt: 'Test prompt',
         modelKey: 'test-gemini'
       };

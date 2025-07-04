@@ -43,7 +43,7 @@
 
     <!-- 主要内容插槽 -->
     <!-- 提示词区 -->
-    <ContentCardUI>
+    <ContentCardUI class="flex-1 min-w-0 flex flex-col">
       <!-- 输入区域 -->
       <div class="flex-none">
         <InputPanelUI
@@ -60,8 +60,8 @@
           @submit="handleOptimizePrompt"
           @configModel="showConfig = true"
         >
-          <template #prompt-type-selector>
-            <PromptTypeSelectorUI
+          <template #optimization-mode-selector>
+            <OptimizationModeSelectorUI
               v-model="selectedOptimizationMode"
               @change="handleOptimizationModeChange"
             />
@@ -77,21 +77,23 @@
           </template>
           <template #template-select>
             <TemplateSelectUI
-              v-model="selectedOptimizeTemplate"
+              ref="templateSelectRef"
+              v-model="currentSelectedTemplate"
               :type="selectedOptimizationMode === 'system' ? 'optimize' : 'userOptimize'"
               :optimization-mode="selectedOptimizationMode"
               @manage="openTemplateManager(selectedOptimizationMode === 'system' ? 'optimize' : 'userOptimize')"
-              @select="handleTemplateSelect"
             />
           </template>
         </InputPanelUI>
       </div>
 
       <!-- 优化结果区域 -->
-      <div class="flex-1 min-h-0 overflow-y-auto">
+      <div class="flex-1 min-h-0">
         <PromptPanelUI
           v-model:optimized-prompt="optimizedPrompt"
+          :reasoning="optimizedReasoning"
           :original-prompt="prompt"
+          :is-optimizing="isOptimizing"
           :is-iterating="isIterating"
           v-model:selected-iterate-template="selectedIterateTemplate"
           :versions="currentVersions"
@@ -99,13 +101,13 @@
           @iterate="handleIteratePrompt"
           @openTemplateManager="openTemplateManager"
           @switchVersion="handleSwitchVersion"
-          @templateSelect="handleTemplateSelect"
         />
       </div>
     </ContentCardUI>
 
     <!-- 测试区域 -->
     <TestPanelUI
+      class="flex-1 min-w-0 flex flex-col"
       :prompt-service="promptServiceRef"
       :original-prompt="prompt"
       :optimized-prompt="optimizedPrompt"
@@ -133,9 +135,9 @@
           :template-type="currentType"
           :optimization-mode="selectedOptimizationMode"
           :selected-optimize-template="selectedOptimizeTemplate"
+          :selected-user-optimize-template="selectedUserOptimizeTemplate"
           :selected-iterate-template="selectedIterateTemplate"
           @close="handleTemplateManagerClose"
-          @select="handleTemplateSelect"
         />
       </Teleport>
 
@@ -163,7 +165,6 @@ import { onMounted, ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import {
   // UI组件
-  ToastUI,
   ModelManagerUI,
   ThemeToggleUI,
   TemplateManagerUI,
@@ -175,24 +176,24 @@ import {
   DataManagerUI,
   InputPanelUI,
   PromptPanelUI,
-  PromptTypeSelectorUI,
+  OptimizationModeSelectorUI,
   ModelSelectUI,
   TemplateSelectUI,
   ContentCardUI,
   // composables
   usePromptOptimizer,
-  usePromptTester,
   useToast,
   usePromptHistory,
   useServiceInitializer,
-  useTemplateManager,
   useModelManager,
   useHistoryManager,
   useModelSelectors,
   // 服务
   modelManager,
   templateManager,
-  historyManager
+  historyManager,
+  // 类型
+  type OptimizationMode
 } from '@prompt-optimizer/ui'
 
 // 初始化主题
@@ -218,23 +219,10 @@ const toast = useToast()
 const { t } = useI18n()
 
 // 新增状态
-const selectedOptimizationMode = ref('system')
-
-// 计算属性：动态标签
-const promptInputLabel = computed(() => {
-  return selectedOptimizationMode.value === 'system'
-    ? t('promptOptimizer.systemPromptInput')
-    : t('promptOptimizer.userPromptInput')
-})
-
-const promptInputPlaceholder = computed(() => {
-  return selectedOptimizationMode.value === 'system'
-    ? t('promptOptimizer.systemPromptPlaceholder')
-    : t('promptOptimizer.userPromptPlaceholder')
-})
+const selectedOptimizationMode = ref<OptimizationMode>('system')
 
 // 事件处理
-const handleOptimizationModeChange = (mode) => {
+const handleOptimizationModeChange = (mode: OptimizationMode) => {
   selectedOptimizationMode.value = mode
 }
 
@@ -267,17 +255,18 @@ const {
 const {
   prompt,
   optimizedPrompt,
+  optimizedReasoning,
   isOptimizing,
   isIterating,
   selectedOptimizeTemplate,
+  selectedUserOptimizeTemplate,
   selectedIterateTemplate,
   currentVersions,
   currentVersionId,
   currentChainId,
   handleOptimizePrompt,
   handleIteratePrompt,
-  handleSwitchVersion,
-  saveTemplateSelection
+  handleSwitchVersion
 } = usePromptOptimizer(
   modelManager,
   templateManager,
@@ -287,6 +276,36 @@ const {
   selectedOptimizeModel,
   selectedTestModel
 )
+
+// 计算属性：根据优化模式选择对应的模板
+const currentSelectedTemplate = computed({
+  get() {
+    return selectedOptimizationMode.value === 'system'
+      ? selectedOptimizeTemplate.value
+      : selectedUserOptimizeTemplate.value
+  },
+  set(newValue) {
+    if (!newValue) return;
+    if (selectedOptimizationMode.value === 'system') {
+      selectedOptimizeTemplate.value = newValue
+    } else {
+      selectedUserOptimizeTemplate.value = newValue
+    }
+  }
+})
+
+// 计算属性：动态标签
+const promptInputLabel = computed(() => {
+  return selectedOptimizationMode.value === 'system'
+    ? t('promptOptimizer.systemPromptInput')
+    : t('promptOptimizer.userPromptInput')
+})
+
+const promptInputPlaceholder = computed(() => {
+  return selectedOptimizationMode.value === 'system'
+    ? t('promptOptimizer.systemPromptPlaceholder')
+    : t('promptOptimizer.userPromptPlaceholder')
+})
 
 // 初始化历史记录管理器
 const {
@@ -321,19 +340,27 @@ const {
   handleDeleteChainBase
 )
 
-// 初始化模板管理器
-const {
-  showTemplates,
-  currentType,
-  handleTemplateSelect,
-  openTemplateManager,
-  handleTemplateManagerClose
-} = useTemplateManager({
-  selectedOptimizeTemplate,
-  selectedIterateTemplate,
-  saveTemplateSelection,
-  templateManager
-})
+// Template Manager state
+const showTemplates = ref(false)
+const currentType = ref('')
+
+const openTemplateManager = (type: string) => {
+  currentType.value = type
+  showTemplates.value = true
+}
+
+// 模板选择器引用
+const templateSelectRef = ref()
+
+const handleTemplateManagerClose = () => {
+  showTemplates.value = false
+
+  // 刷新模板选择器以反映语言变更后的模板
+  // 子组件会通过 v-model 自动更新父组件的状态
+  if (templateSelectRef.value?.refresh) {
+    templateSelectRef.value.refresh()
+  }
+}
 
 // 数据管理器
 const showDataManager = ref(false)

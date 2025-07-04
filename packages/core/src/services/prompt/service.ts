@@ -1,4 +1,4 @@
-import { IPromptService, OptimizationRequest, OptimizationMode } from './types';
+import { IPromptService, OptimizationRequest } from './types';
 import { Message, StreamHandlers } from '../llm/types';
 import { PromptRecord } from '../history/types';
 import { ModelManager, modelManager as defaultModelManager } from '../model/manager';
@@ -8,7 +8,6 @@ import { HistoryManager, historyManager as defaultHistoryManager } from '../hist
 import { OptimizationError, IterationError, TestError, ServiceDependencyError } from './errors';
 import { ERROR_MESSAGES } from '../llm/errors';
 import { TemplateProcessor, TemplateContext } from '../template/processor';
-import { DEFAULT_TEMPLATES as TEMPLATE_DEFAULTS } from '../template/defaults';
 import { v4 as uuidv4 } from 'uuid';
 
 /**
@@ -92,7 +91,9 @@ export class PromptService implements IPromptService {
       }
 
       const template = this.templateManager.getTemplate(
-        request.templateId || this.getDefaultTemplateId('optimize', request.optimizationMode)
+        request.templateId || this.getDefaultTemplateId(
+          request.optimizationMode === 'user' ? 'userOptimize' : 'optimize'
+        )
       );
 
       if (!template?.content) {
@@ -253,11 +254,7 @@ export class PromptService implements IPromptService {
     systemPrompt: string,
     userPrompt: string,
     modelKey: string,
-    callbacks: {
-      onToken: (token: string) => void;
-      onComplete: () => void;
-      onError: (error: Error) => void;
-    }
+    callbacks: StreamHandlers
   ): Promise<void> {
     try {
       // 对于用户提示词优化，systemPrompt 可以为空
@@ -282,7 +279,13 @@ export class PromptService implements IPromptService {
 
       messages.push({ role: 'user', content: userPrompt });
 
-      await this.llmService.sendMessageStream(messages, modelKey, callbacks);
+      // 使用新的结构化流式响应
+      await this.llmService.sendMessageStream(messages, modelKey, {
+        onToken: callbacks.onToken,
+        onReasoningToken: callbacks.onReasoningToken, // 支持推理内容流
+        onComplete: callbacks.onComplete,
+        onError: callbacks.onError
+      });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       throw new TestError(`Test failed: ${errorMessage}`, systemPrompt, userPrompt);
@@ -305,7 +308,9 @@ export class PromptService implements IPromptService {
       }
 
       const template = this.templateManager.getTemplate(
-        request.templateId || this.getDefaultTemplateId('optimize', request.optimizationMode)
+        request.templateId || this.getDefaultTemplateId(
+          request.optimizationMode === 'user' ? 'userOptimize' : 'optimize'
+        )
       );
 
       if (!template?.content) {
@@ -319,19 +324,24 @@ export class PromptService implements IPromptService {
 
       const messages = TemplateProcessor.processTemplate(template, context);
 
-      let result = '';
+      // 使用新的结构化流式响应
       await this.llmService.sendMessageStream(
         messages,
         request.modelKey,
         {
-          onToken: (token) => {
-            result += token;
-            callbacks.onToken(token);
-          },
-          onComplete: async () => {
-            this.validateResponse(result, request.targetPrompt);
-            await this.saveOptimizationHistory(request, result);
-            callbacks.onComplete();
+          onToken: callbacks.onToken,
+          onReasoningToken: callbacks.onReasoningToken, // 支持推理内容流
+          onComplete: async (response) => {
+            if (response) {
+              // 验证主要内容
+              this.validateResponse(response.content, request.targetPrompt);
+              
+              // 保存优化历史 - 只保存主要内容
+              await this.saveOptimizationHistory(request, response.content);
+            }
+            
+            // 调用原始完成回调，传递结构化响应
+            callbacks.onComplete(response);
           },
           onError: callbacks.onError
         }
@@ -385,18 +395,22 @@ export class PromptService implements IPromptService {
       };
       const messages = TemplateProcessor.processTemplate(template, context);
 
-      // 使用流式调用
-      let result = '';
+      // 使用新的结构化流式响应
       await this.llmService.sendMessageStream(
         messages,
         modelKey,
         {
-          onToken: (token) => {
-            result += token;
-            handlers.onToken(token);
-          },
-          onComplete: () => {
-            handlers.onComplete();
+          onToken: handlers.onToken,
+          onReasoningToken: handlers.onReasoningToken, // 支持推理内容流
+          onComplete: async (response) => {
+            if (response) {
+              // 验证迭代结果
+              this.validateResponse(response.content, lastOptimizedPrompt);
+            }
+            
+            // 调用原始完成回调，传递结构化响应
+            // 注意：迭代历史记录由UI层的historyManager.addIteration方法处理
+            handlers.onComplete(response);
           },
           onError: handlers.onError
         }
@@ -424,37 +438,51 @@ export class PromptService implements IPromptService {
   /**
    * 获取默认模板ID
    */
-  private getDefaultTemplateId(templateType: 'optimize' | 'iterate', optimizationMode: OptimizationMode): string {
-    // 尝试获取特定类型的模板
+  private getDefaultTemplateId(templateType: 'optimize' | 'userOptimize' | 'iterate'): string {
     try {
-      // 根据optimizationMode确定实际的templateType
-      let actualTemplateType: 'optimize' | 'userOptimize' | 'iterate';
-      if (templateType === 'optimize') {
-        actualTemplateType = optimizationMode === 'user' ? 'userOptimize' : 'optimize';
-      } else {
-        actualTemplateType = 'iterate';
-      }
-
-      const templates = this.templateManager.listTemplatesByType(actualTemplateType);
+      // 尝试获取指定类型的模板列表
+      const templates = this.templateManager.listTemplatesByType(templateType);
       if (templates.length > 0) {
+        // 返回列表中第一个模板的ID
         return templates[0].id;
       }
     } catch (error) {
-      console.warn(`Failed to get templates for type ${templateType}:${optimizationMode}`, error);
+      console.warn(`Failed to get templates for type ${templateType}`, error);
     }
 
-    // 回退到通用模板ID
-    if (templateType === 'optimize') {
-      // 对于用户提示词优化，优先使用用户提示词优化模板
-      if (optimizationMode === 'user' && TEMPLATE_DEFAULTS['user-prompt-optimize']) {
-        return 'user-prompt-optimize';
+    // 如果指定类型没有模板，尝试获取相关类型的模板作为回退
+    try {
+      let fallbackTypes: ('optimize' | 'userOptimize' | 'iterate')[] = [];
+      
+      if (templateType === 'optimize') {
+        fallbackTypes = ['userOptimize']; // optimize类型回退到userOptimize
+      } else if (templateType === 'userOptimize') {
+        fallbackTypes = ['optimize']; // userOptimize类型回退到optimize
+      } else if (templateType === 'iterate') {
+        fallbackTypes = ['optimize', 'userOptimize']; // iterate类型回退到任意优化类型
       }
-      // 回退到通用优化模板
-      return 'general-optimize';
-    } else {
-      // 迭代使用通用迭代模板，不区分提示词类型
-      return 'iterate';
+      
+      for (const fallbackType of fallbackTypes) {
+        const fallbackTemplates = this.templateManager.listTemplatesByType(fallbackType);
+        if (fallbackTemplates.length > 0) {
+          console.log(`Using fallback template type ${fallbackType} for ${templateType}`);
+          return fallbackTemplates[0].id;
+        }
+      }
+      
+      // 最后的回退：获取所有模板中第一个可用的内置模板
+      const allTemplates = this.templateManager.listTemplates();
+      const availableTemplate = allTemplates.find(t => t.isBuiltin);
+      if (availableTemplate) {
+        console.warn(`Using fallback builtin template: ${availableTemplate.id} for type ${templateType}`);
+        return availableTemplate.id;
+      }
+    } catch (fallbackError) {
+      console.error(`Fallback template search failed:`, fallbackError);
     }
+
+    // 如果所有方法都失败，抛出错误
+    throw new Error(`No templates available for type: ${templateType}`);
   }
 
   /**
@@ -470,12 +498,23 @@ export class PromptService implements IPromptService {
       version: 1,
       timestamp: Date.now(),
       modelKey: request.modelKey,
-      templateId: request.templateId || this.getDefaultTemplateId('optimize', request.optimizationMode),
+      templateId: request.templateId || this.getDefaultTemplateId(
+        request.optimizationMode === 'user' ? 'userOptimize' : 'optimize'
+      ),
       metadata: {
         optimizationMode: request.optimizationMode
       }
     });
   }
+
+  // 注意：迭代历史记录由UI层管理，而非核心服务层
+  // 原因：
+  // 1. 迭代需要现有的chainId，这个信息由UI层的状态管理器维护
+  // 2. 迭代与用户交互紧密结合，需要实时更新UI状态
+  // 3. 版本管理逻辑在UI层更容易处理
+  // 
+  // 相比之下，优化操作会创建新的链，所以可以在核心层处理
+  // 这种混合架构是经过权衡的设计决策
 }
 
 // 导出工厂函数

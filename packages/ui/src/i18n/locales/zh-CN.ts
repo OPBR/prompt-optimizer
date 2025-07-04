@@ -44,6 +44,35 @@ export default {
     number: '数字',
     integer: '整数',
     optional: '可选',
+    copy: '复制',
+    content: '内容',
+    noContent: '暂无内容',
+    clickToEdit: '点击编辑',
+    generating: '生成中...',
+    generatingReasoning: '思考中...',
+    copyContent: '复制内容',
+    copyAll: '复制全部',
+    expandReasoning: '展开思考过程',
+    collapseReasoning: '收起思考过程',
+    success: '成功',
+    error: '错误',
+    warning: '警告',
+    info: '信息',
+    deleteConfirmation: '你确定要删除吗？',
+    editingDisabledDuringStream: '内容生成期间无法编辑',
+    markdown: '渲染',
+    text: '文本',
+    switchToTextView: '切换到纯文本视图',
+    switchToMarkdownView: '切换到Markdown渲染视图',
+    copied: '已复制',
+    render: '渲染',
+    source: '原文',
+    reasoning: '思考过程',
+    compare: '对比'
+  },
+  actions: {
+    copy: '复制',
+    fullscreen: '全屏'
   },
   nav: {
     home: '首页',
@@ -67,7 +96,7 @@ export default {
     templateLabel: '优化提示词',
 
     // 新增：优化模式相关
-    promptType: '优化模式',
+    optimizationMode: '优化模式',
     systemPrompt: '系统提示词优化',
     userPrompt: '用户提示词优化',
     systemPromptInput: '系统提示词',
@@ -386,6 +415,12 @@ export default {
     confirmOptimize: '确认优化',
     iterateTitle: '迭代功能提示词',
     selectIterateTemplate: '请选择迭代提示词：',
+    diff: {
+      compare: '与上版对比',
+      exit: '退出对比',
+      enable: '启用文本对比',
+      disable: '关闭文本对比'
+    },
     error: {
       noTemplate: '请先选择迭代提示词'
     }
@@ -420,7 +455,10 @@ export default {
     error: {
       serviceInit: '服务未初始化，请稍后重试',
       optimizeFailed: '优化失败',
-      iterateFailed: '迭代优化失败',
+      iterateFailed: '迭代失败',
+      compareFailed: '对比分析失败',
+      noVersionsToCompare: '没有足够的版本进行对比',
+      noPreviousVersion: '没有前一版本可供对比',
       testFailed: '测试失败',
       testError: '测试过程中发生错误',
       loadTemplatesFailed: '加载提示词失败',
@@ -443,12 +481,14 @@ export default {
     },
     success: {
       optimizeSuccess: '优化成功',
-      iterateComplete: '迭代完成',
+      iterateComplete: '迭代优化完成',
       iterateSuccess: '迭代优化成功',
       modelSelected: '已选择模型: {name}',
       templateSelected: '已选择{type}提示词: {name}',
       historyClear: '历史记录已清空',
-      historyChainDeleted: '历史记录已删除'
+      historyChainDeleted: '历史记录已删除',
+      exitCompare: '已退出对比模式',
+      compareEnabled: '对比模式已启用'
     },
     warn: {
       loadOptimizeTemplateFailed: '加载已保存的优化提示词失败',

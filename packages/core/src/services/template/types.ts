@@ -9,6 +9,8 @@ export interface TemplateMetadata {
   author?: string;          // 作者（可选）
   description?: string;     // 描述（可选）
   templateType: 'optimize' | 'userOptimize' | 'iterate'; // 模板类型标识
+  language?: 'zh' | 'en';   // 模板语言（可选，主要用于内置模板语言切换）
+  [key: string]: any;       // 允许任意额外字段
 }
 
 /**
@@ -47,6 +49,9 @@ export interface TemplateManagerConfig {
  * 提示词管理器接口
  */
 export interface ITemplateManager {
+  /** 确保管理器已初始化 */
+  ensureInitialized(): Promise<void>;
+
   /** 获取指定ID的模板 */
   getTemplate(templateId: string): Template; // Stays synchronous
 
@@ -101,7 +106,8 @@ export const templateSchema = z.object({
     lastModified: z.number(),
     author: z.string().optional(),
     description: z.string().optional(),
-    templateType: z.enum(['optimize', 'userOptimize', 'iterate'])
-  }),
+    templateType: z.enum(['optimize', 'userOptimize', 'iterate']),
+    language: z.enum(['zh', 'en']).optional()
+  }).passthrough(), // 允许额外字段通过验证
   isBuiltin: z.boolean().optional()
 });

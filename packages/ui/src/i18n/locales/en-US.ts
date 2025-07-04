@@ -35,7 +35,7 @@ export default {
     version: 'V{version}',
     optimize: 'Optimize',
     iterate: 'Iterate',
-    copySuccess: 'Copy Success',
+    copySuccess: 'Copied to clipboard',
     copyFailed: 'Copy Failed',
     appName: 'Prompt Optimizer',
     selectFile: 'Select File',
@@ -44,6 +44,35 @@ export default {
     number: 'Number',
     integer: 'Integer',
     optional: 'Optional',
+    copy: 'Copy',
+    content: 'Content',
+    noContent: 'No content',
+    clickToEdit: 'Click to edit',
+    generating: 'Generating...',
+    generatingReasoning: 'Thinking...',
+    copyContent: 'Copy Content',
+    copyAll: 'Copy All',
+    expandReasoning: 'Expand reasoning',
+    collapseReasoning: 'Collapse reasoning',
+    success: 'Success',
+    error: 'Error',
+    warning: 'Warning',
+    info: 'Info',
+    deleteConfirmation: 'Are you sure you want to delete this?',
+    editingDisabledDuringStream: 'Editing is disabled while content is being generated',
+    markdown: 'Render',
+    text: 'Text',
+    switchToTextView: 'Switch to Plain Text View',
+    switchToMarkdownView: 'Switch to Markdown Render View',
+    copied: 'Copied',
+    render: 'Render',
+    source: 'Source',
+    reasoning: 'Reasoning',
+    compare: 'Compare'
+  },
+  actions: {
+    copy: 'Copy',
+    fullscreen: 'Fullscreen'
   },
   nav: {
     home: 'Home',
@@ -67,7 +96,7 @@ export default {
     templateLabel: 'Optimization Template',
 
     // New: Optimization Mode Related
-    promptType: 'Optimization Mode',
+    optimizationMode: 'Optimization Mode',
     systemPrompt: 'System Prompt Optimization',
     userPrompt: 'User Prompt Optimization',
     systemPromptInput: 'System Prompt',
@@ -386,6 +415,12 @@ export default {
     confirmOptimize: 'Confirm Optimize',
     iterateTitle: 'Iteration Template',
     selectIterateTemplate: 'Please select iteration template:',
+    diff: {
+      compare: 'Compare with Previous',
+      exit: 'Exit Compare',
+      enable: 'Enable text comparison',
+      disable: 'Disable text comparison'
+    },
     error: {
       noTemplate: 'Please select an iteration template first'
     }
@@ -420,7 +455,10 @@ export default {
     error: {
       serviceInit: 'Service not initialized, please try again later',
       optimizeFailed: 'Optimization failed',
-      iterateFailed: 'Iteration optimization failed',
+      iterateFailed: 'Iteration failed',
+      compareFailed: 'Comparison analysis failed',
+      noVersionsToCompare: 'Not enough versions to compare',
+      noPreviousVersion: 'No previous version available for comparison',
       testFailed: 'Test failed',
       testError: 'Error occurred during test',
       loadTemplatesFailed: 'Failed to load templates',
@@ -443,12 +481,14 @@ export default {
     },
     success: {
       optimizeSuccess: 'Optimization successful',
-      iterateComplete: 'Iteration completed',
+      iterateComplete: 'Iteration optimization completed',
       iterateSuccess: 'Iteration optimization successful',
       modelSelected: 'Model selected: {name}',
       templateSelected: '{type} template selected: {name}',
       historyClear: 'History cleared',
-      historyChainDeleted: 'History record deleted'
+      historyChainDeleted: 'History record deleted',
+      exitCompare: 'Exited compare mode',
+      compareEnabled: 'Compare mode enabled'
     },
     warn: {
       loadOptimizeTemplateFailed: 'Failed to load saved optimization template',

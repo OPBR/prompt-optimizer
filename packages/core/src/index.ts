@@ -6,7 +6,7 @@ export { TemplateProcessor } from './services/template/processor'
 export { TemplateLanguageService, templateLanguageService } from './services/template/languageService'
 export type { BuiltinTemplateLanguage } from './services/template/languageService'
 export * from './services/template/types'
-export * from './services/template/defaults'
+export { StaticLoader } from './services/template/static-loader'
 export * from './services/template/errors'
 
 // 导出历史记录相关
@@ -38,6 +38,11 @@ export type {
 export { PromptService, createPromptService } from './services/prompt/service'
 export * from './services/prompt/types'
 export * from './services/prompt/errors'
+
+// 导出对比服务相关
+export { CompareService, compareService } from './services/compare'
+export * from './services/compare/types'
+export * from './services/compare/errors'
 
 // 导出数据管理相关
 export { DataManager, dataManager } from './services/data/manager'

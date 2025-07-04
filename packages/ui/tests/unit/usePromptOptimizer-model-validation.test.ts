@@ -42,14 +42,14 @@ describe('usePromptOptimizer Model Validation', () => {
         id: 'test-template',
         name: 'Test Template',
         content: 'Test template {{originalPrompt}}',
-        metadata: { templateType: 'optimize' }
+        metadata: { templateType: 'optimize', version: '1.0', lastModified: Date.now(), language: 'zh' }
       }),
       listTemplatesByTypes: vi.fn().mockReturnValue([
         {
           id: 'test-template',
           name: 'Test Template',
           content: 'Test template {{originalPrompt}}',
-          metadata: { templateType: 'optimize' }
+          metadata: { templateType: 'optimize', version: '1.0', lastModified: Date.now(), language: 'zh' }
         }
       ]),
       listTemplatesByType: vi.fn().mockReturnValue([
@@ -57,7 +57,7 @@ describe('usePromptOptimizer Model Validation', () => {
           id: 'test-template',
           name: 'Test Template',
           content: 'Test template {{originalPrompt}}',
-          metadata: { templateType: 'optimize' }
+          metadata: { templateType: 'optimize', version: '1.0', lastModified: Date.now(), language: 'zh' }
         }
       ])
     }
@@ -94,25 +94,25 @@ describe('usePromptOptimizer Model Validation', () => {
     it('should test optimization request structure', () => {
       // Test system prompt optimization request
       const systemRequest = {
-        promptType: 'system',
+        optimizationMode: 'system',
         targetPrompt: 'Test system prompt',
         modelKey: 'test-model',
         templateId: 'test-template'
       }
 
-      expect(systemRequest.promptType).toBe('system')
+      expect(systemRequest.optimizationMode).toBe('system')
       expect(systemRequest.modelKey).toBe('test-model')
       expect(systemRequest.targetPrompt).toBeTruthy()
 
       // Test user prompt optimization request
       const userRequest = {
-        promptType: 'user',
+        optimizationMode: 'user',
         targetPrompt: 'Test user prompt',
         modelKey: 'test-model',
         templateId: 'test-template'
       }
 
-      expect(userRequest.promptType).toBe('user')
+      expect(userRequest.optimizationMode).toBe('user')
       expect(userRequest.modelKey).toBe('test-model')
       expect(userRequest.targetPrompt).toBeTruthy()
     })
@@ -122,12 +122,12 @@ describe('usePromptOptimizer Model Validation', () => {
     it('should validate required parameters for optimization', () => {
       // Test required parameters
       const requiredParams = {
-        promptType: 'system',
+        optimizationMode: 'system',
         targetPrompt: 'Test prompt',
         modelKey: 'test-model'
       }
 
-      expect(requiredParams.promptType).toBeTruthy()
+      expect(requiredParams.optimizationMode).toBeTruthy()
       expect(requiredParams.targetPrompt).toBeTruthy()
       expect(requiredParams.modelKey).toBeTruthy()
 

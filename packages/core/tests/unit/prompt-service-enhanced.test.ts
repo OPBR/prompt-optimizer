@@ -30,14 +30,14 @@ describe('PromptService Enhanced Features', () => {
         return {
           id: id,
           content: 'test template content {{originalPrompt}}',
-          metadata: { promptType: 'system' }
+          metadata: { optimizationMode: 'system' }
         }
       }),
       listTemplatesByType: vi.fn().mockReturnValue([
         {
           id: 'user-prompt-optimize',
           content: 'user prompt template {{originalPrompt}}',
-          metadata: { promptType: 'user', templateType: 'optimize' }
+          metadata: { templateType: 'optimize', version: '1.0', lastModified: Date.now(), language: 'zh' }
         }
       ])
     }
@@ -57,7 +57,7 @@ describe('PromptService Enhanced Features', () => {
   describe('optimizePrompt', () => {
     it('should optimize system prompt successfully', async () => {
       const request: OptimizationRequest = {
-        promptType: 'system',
+        optimizationMode: 'system' as const,
         targetPrompt: 'test system prompt',
         modelKey: 'test-model',
         templateId: 'test-template'
@@ -72,7 +72,7 @@ describe('PromptService Enhanced Features', () => {
 
     it('should optimize user prompt successfully', async () => {
       const request: OptimizationRequest = {
-        promptType: 'user',
+        optimizationMode: 'user' as const,
         targetPrompt: 'test user prompt',
         modelKey: 'test-model',
         templateId: 'test-template'
@@ -86,7 +86,7 @@ describe('PromptService Enhanced Features', () => {
 
     it('should optimize user prompt without context successfully', async () => {
       const request: OptimizationRequest = {
-        promptType: 'user',
+        optimizationMode: 'user' as const,
         targetPrompt: 'test user prompt',
         modelKey: 'test-model'
       }
@@ -99,7 +99,7 @@ describe('PromptService Enhanced Features', () => {
 
     it('should throw error for empty target prompt', async () => {
       const request: OptimizationRequest = {
-        promptType: 'system',
+        optimizationMode: 'system' as const,
         targetPrompt: '',
         modelKey: 'test-model'
       }
@@ -110,7 +110,7 @@ describe('PromptService Enhanced Features', () => {
 
     it('should throw error for empty model key', async () => {
       const request: OptimizationRequest = {
-        promptType: 'system',
+        optimizationMode: 'system' as const,
         targetPrompt: 'test prompt',
         modelKey: ''
       }
@@ -174,7 +174,7 @@ describe('PromptService Enhanced Features', () => {
   describe('optimizePromptStream', () => {
     it('should handle streaming optimization', async () => {
       const request: OptimizationRequest = {
-        promptType: 'system',
+        optimizationMode: 'system' as const,
         targetPrompt: 'test prompt',
         modelKey: 'test-model'
       }
@@ -189,7 +189,12 @@ describe('PromptService Enhanced Features', () => {
       mockLLMService.sendMessageStream.mockImplementation(async (messages, modelKey, streamCallbacks) => {
         streamCallbacks.onToken('test')
         streamCallbacks.onToken(' result')
-        await streamCallbacks.onComplete()
+        // 模拟结构化响应
+        const mockResponse = {
+          content: 'test result',
+          reasoning: 'some reasoning'
+        }
+        await streamCallbacks.onComplete(mockResponse)
       })
 
       await promptService.optimizePromptStream(request, callbacks)
@@ -198,6 +203,63 @@ describe('PromptService Enhanced Features', () => {
       expect(callbacks.onToken).toHaveBeenCalledWith(' result')
       expect(callbacks.onComplete).toHaveBeenCalled()
       expect(mockHistoryManager.addRecord).toHaveBeenCalled()
+    })
+
+    it('should handle missing model key', async () => {
+      const callbacks = {
+        onToken: vi.fn(),
+        onComplete: vi.fn(),
+        onError: vi.fn()
+      }
+
+      const request: OptimizationRequest = {
+        optimizationMode: 'system' as const,
+        targetPrompt: 'Test prompt',
+        templateId: 'general-optimize',
+        modelKey: '' // Empty model key
+      }
+
+      await expect(
+        promptService.optimizePromptStream(request, callbacks)
+      ).rejects.toThrow('Model key is required')
+    })
+
+    it('should handle undefined model key', async () => {
+      const callbacks = {
+        onToken: vi.fn(),
+        onComplete: vi.fn(),
+        onError: vi.fn()
+      }
+
+      const request: OptimizationRequest = {
+        optimizationMode: 'system' as const,
+        targetPrompt: 'Test prompt',
+        templateId: 'general-optimize',
+        modelKey: undefined as any // Undefined model key
+      }
+
+      await expect(
+        promptService.optimizePromptStream(request, callbacks)
+      ).rejects.toThrow('Model key is required')
+    })
+
+    it('should handle missing template gracefully', async () => {
+      const callbacks = {
+        onToken: vi.fn(),
+        onComplete: vi.fn(),
+        onError: vi.fn()
+      }
+
+      const request: OptimizationRequest = {
+        optimizationMode: 'system' as const,
+        targetPrompt: 'Test prompt',
+        templateId: 'non-existent-template',
+        modelKey: 'test-model'
+      }
+
+      await expect(
+        promptService.optimizePromptStream(request, callbacks)
+      ).rejects.toThrow('Template not found or invalid')
     })
   })
 
@@ -230,65 +292,6 @@ describe('PromptService Enhanced Features', () => {
         'test-model',
         callbacks
       )
-    })
-  })
-
-  describe('Error Handling', () => {
-    it('should handle missing model key', async () => {
-      const callbacks = {
-        onToken: vi.fn(),
-        onComplete: vi.fn(),
-        onError: vi.fn()
-      }
-
-      const request: OptimizationRequest = {
-        promptType: 'system',
-        targetPrompt: 'Test prompt',
-        templateId: 'general-optimize',
-        modelKey: '' // Empty model key
-      }
-
-      await expect(
-        promptService.optimizePromptStream(request, callbacks)
-      ).rejects.toThrow('Model key is required')
-    })
-
-    it('should handle undefined model key', async () => {
-      const callbacks = {
-        onToken: vi.fn(),
-        onComplete: vi.fn(),
-        onError: vi.fn()
-      }
-
-      const request: OptimizationRequest = {
-        promptType: 'system',
-        targetPrompt: 'Test prompt',
-        templateId: 'general-optimize',
-        modelKey: undefined as any // Undefined model key
-      }
-
-      await expect(
-        promptService.optimizePromptStream(request, callbacks)
-      ).rejects.toThrow('Model key is required')
-    })
-
-    it('should handle missing template gracefully', async () => {
-      const callbacks = {
-        onToken: vi.fn(),
-        onComplete: vi.fn(),
-        onError: vi.fn()
-      }
-
-      const request: OptimizationRequest = {
-        promptType: 'system',
-        targetPrompt: 'Test prompt',
-        templateId: 'non-existent-template',
-        modelKey: 'test-model'
-      }
-
-      await expect(
-        promptService.optimizePromptStream(request, callbacks)
-      ).rejects.toThrow('Template not found or invalid')
     })
   })
 })
